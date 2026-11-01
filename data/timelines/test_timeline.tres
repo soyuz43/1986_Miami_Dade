@@ -6,23 +6,23 @@
 [sub_resource type="Resource" id="TimelineEvent_StateChange"]
 script = ExtResource("2_timeline_event")
 timestamp_seconds = 0.0
-actor_id = "agent_1"
+actor_id = "michael_platt"
 event_type = 3
 parameters = {"state": "IDLE"}
 
 [sub_resource type="Resource" id="TimelineEvent_MoveTo"]
 script = ExtResource("2_timeline_event")
 timestamp_seconds = 1.0
-actor_id = "agent_1"
+actor_id = "michael_platt"
 event_type = 1
 parameters = {"position": Vector3(1, 0, 0)}
 
 [sub_resource type="Resource" id="TimelineEvent_FireWeapon"]
 script = ExtResource("2_timeline_event")
 timestamp_seconds = 2.0
-actor_id = "agent_1"
+actor_id = "michael_platt"
 event_type = 0
-target_actor_id = "suspect_1"
+target_actor_id = "jerry_dove"
 
 [resource]
 script = ExtResource("1_timeline_data")

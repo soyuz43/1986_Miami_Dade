@@ -1,0 +1,45 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/simulation_driver.gd" id="1_driver"]
+[ext_resource type="Resource" path="res://data/actors/michael_platt.tres" id="2_platt"]
+[ext_resource type="Resource" path="res://data/actors/jerry_dove.tres" id="3_dove"]
+[ext_resource type="Resource" path="res://data/timelines/test_timeline.tres" id="4_timeline"]
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_ground"]
+size = Vector2(50, 36)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ground"]
+albedo_color = Color(0.17, 0.31, 0.17, 1)
+roughness = 1.0
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1_driver")
+platt_profile = ExtResource("2_platt")
+dove_profile = ExtResource("3_dove")
+demo_timeline = ExtResource("4_timeline")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+position = Vector3(0, -0.08, 0)
+mesh = SubResource("PlaneMesh_ground")
+material_override = SubResource("StandardMaterial3D_ground")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 34, 12)
+projection = 1
+size = 38.0
+current = true
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-58, -25, 0)
+shadow_enabled = true
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+offset_left = 24.0
+offset_top = 20.0
+offset_right = 860.0
+offset_bottom = 100.0
+theme_override_colors/font_color = Color(0.08, 0.09, 0.11, 1)
+theme_override_font_sizes/font_size = 20
+text = "3D overhead blockout  |  Press R to replay\nBox-car placeholders | Test timeline, not a historical reconstruction"
