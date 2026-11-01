@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/weapon_data.gd" id="1_weapon_data"]
+
+[resource]
+script = ExtResource("1_weapon_data")
+display_name = "Ruger Mini-14"
+weapon_class = 0
+caliber = ".223"
+magazine_size = 20
+rounds_per_minute = 600.0
+reload_time_seconds = 4.0
+spread_degrees = 1.5
+penetration_power = 85.0
+damage_base = 90.0
+can_fire_one_handed = false
+malfunction_chance = 0.002

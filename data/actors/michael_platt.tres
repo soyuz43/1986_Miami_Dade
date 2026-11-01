@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="ActorProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/actor_profile.gd" id="1_actor_profile"]
+[ext_resource type="Resource" path="res://data/weapons/ruger_mini14.tres" id="2_starting_weapon"]
+
+[resource]
+script = ExtResource("1_actor_profile")
+actor_id = "michael_platt"
+display_name = "Michael Lee Platt"
+faction = 1
+starting_weapon = ExtResource("2_starting_weapon")
