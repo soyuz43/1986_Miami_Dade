@@ -20,6 +20,7 @@ static var _random_generator: RandomNumberGenerator = null
 
 var current_state: ActorState = ActorState.IDLE
 var current_health: float = 0.0
+var current_weapon: WeaponData = null
 var current_ammo: int = 0
 var bleed_timer: float = 0.0
 var motor_degradation: float = 0.0
@@ -32,6 +33,7 @@ func _ready() -> void:
 
 	current_health = maxf(profile.starting_health, 0.0)
 	if profile.starting_weapon != null:
+		current_weapon = profile.starting_weapon
 		current_ammo = maxi(profile.starting_weapon.magazine_size, 0)
 
 	if current_health <= 0.0:
@@ -75,13 +77,49 @@ func take_damage(damage: float, hit_location: String) -> void:
 		bleed_timer = maxf(wound_result.bleed_timer, 0.0)
 		motor_degradation = clampf(wound_result.motor_degradation, 0.0, 1.0)
 
+func move_to(destination: Vector3) -> void:
+	if current_state == ActorState.INCAPACITATED or current_state == ActorState.DEAD:
+		return
+	global_position = destination
+	if current_state != ActorState.WOUNDED:
+		current_state = ActorState.IDLE
+
+func reload_weapon() -> void:
+	if current_weapon == null or current_state == ActorState.INCAPACITATED or current_state == ActorState.DEAD:
+		return
+	current_ammo = maxi(current_weapon.magazine_size, 0)
+	if current_state == ActorState.RELOADING:
+		current_state = ActorState.IDLE
+
+func set_actor_state(new_state: ActorState) -> void:
+	current_state = new_state
+
+func transition_weapon(weapon_slot: String) -> bool:
+	if profile == null or current_state == ActorState.INCAPACITATED or current_state == ActorState.DEAD:
+		return false
+
+	var selected_weapon: WeaponData = null
+	match weapon_slot.to_lower():
+		"starting", "primary":
+			selected_weapon = profile.starting_weapon
+		"backup", "secondary":
+			selected_weapon = profile.backup_weapon
+		_:
+			return false
+
+	if selected_weapon == null:
+		return false
+	current_weapon = selected_weapon
+	current_ammo = maxi(current_weapon.magazine_size, 0)
+	return true
+
 func fire_weapon(target: Node3D) -> bool:
 	if current_ammo <= 0 or target == null or profile == null:
 		return false
 	if current_state == ActorState.INCAPACITATED or current_state == ActorState.DEAD or current_state == ActorState.RELOADING:
 		return false
 
-	var weapon: WeaponData = profile.starting_weapon
+	var weapon: WeaponData = current_weapon
 	if weapon == null:
 		return false
 

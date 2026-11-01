@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="TimelineData" load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/timeline_data.gd" id="1_timeline_data"]
+[ext_resource type="Script" path="res://scripts/data/timeline_event.gd" id="2_timeline_event"]
+
+[sub_resource type="Resource" id="TimelineEvent_StateChange"]
+script = ExtResource("2_timeline_event")
+timestamp_seconds = 0.0
+actor_id = "agent_1"
+event_type = 3
+parameters = {"state": "IDLE"}
+
+[sub_resource type="Resource" id="TimelineEvent_MoveTo"]
+script = ExtResource("2_timeline_event")
+timestamp_seconds = 1.0
+actor_id = "agent_1"
+event_type = 1
+parameters = {"position": Vector3(1, 0, 0)}
+
+[sub_resource type="Resource" id="TimelineEvent_FireWeapon"]
+script = ExtResource("2_timeline_event")
+timestamp_seconds = 2.0
+actor_id = "agent_1"
+event_type = 0
+target_actor_id = "suspect_1"
+
+[resource]
+script = ExtResource("1_timeline_data")
+timeline_name = "Test Timeline"
+source_account = "Prototype test data"
+events = Array[ExtResource("2_timeline_event")]([SubResource("TimelineEvent_StateChange"), SubResource("TimelineEvent_MoveTo"), SubResource("TimelineEvent_FireWeapon")])
