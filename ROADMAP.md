@@ -26,7 +26,7 @@ The project already has a useful code foundation:
 - A `SimulationManager` autoload and a small test timeline.
 - Three weapon resources and two actor profile resources.
 
-There is not yet a main scene, crash scene, environment, or player/overview interface. The existing simulation systems are prototypes, not historically validated models.
+Milestone 1 now provides a runnable main scene, scripted crash opening, blockout environment, and overview interface. The reconstruction is a graybox based on written sources, not validated vehicle physics; the existing simulation systems are prototypes, not historically validated models.
 
 ### Known Gaps to Address Before Relying on Replay
 

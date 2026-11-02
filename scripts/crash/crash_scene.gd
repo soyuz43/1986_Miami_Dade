@@ -101,7 +101,7 @@ func _update_labels() -> void:
 	if crash_sequence == null:
 		return
 
-	if _inspect_mode:
+	if crash_sequence.is_finished():
 		status_label.text = "Crash settled  |  Press R to replay  |  Press C for camera toggle"
 	else:
 		status_label.text = "%s  |  Press R to replay  |  Press C for camera toggle" % crash_sequence.get_phase_name()

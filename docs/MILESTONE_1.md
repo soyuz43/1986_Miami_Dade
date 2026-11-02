@@ -57,8 +57,8 @@ Driven by `CrashSequence`, keyed against a relative timeline (no wall-clock time
 | First ram | 4.0 - 6.0 s | Manauzzi closes on the driver side and rams; Hanlon pulls up on the passenger side |
 | U-turn | 6.0 - 7.6 s | The subject car swings around to face northbound |
 | Second ram | 7.6 - 8.8 s | Manauzzi rams the driver side again |
-| Impact | 8.8 - 10.6 s | The pair go over the sidewalk into the yard, striking the tree and the parked car |
-| Settled | 10.6 s onward | Vehicles at their documented resting places; inspection camera takes over |
+| Impact | 8.8 - 12.2 s | The pair go over the sidewalk into the yard, striking the tree and the parked car |
+| Settled | 12.2 s onward | Vehicles at their documented resting places; inspection camera takes over |
 
 ## Verification
 
@@ -75,11 +75,14 @@ It asserts:
    against the tree and the parked civilian car, and is in contact with Manauzzi's car;
    the Hanlon/Mireles car rests on the west side south of the subject vehicle; the Grogan/Dove
    car rests behind (south of) it.
-3. **Restart** - `start()` returns every vehicle to its opening position, resets the clock and
-   clears the finished flag, and a second full run reproduces the same end state.
-4. **No pass-through** - using a separating-axis overlap test on oriented rectangles, no
-   vehicle pair interpenetrates by more than one vehicle length. Deep overlap would mean one
-   car drove clean through another.
+3. **Restart** - after a completed run, `start()` returns all four moving vehicles to their
+   opening positions, resets the clock, clears the finished flag, and a second full run
+   reaches the same end state.
+4. **No pass-through** - the verifier records all ten unique pairs among the five vehicles and
+   rejects a complete center-through-center crossing while the oriented vehicle bounds overlap.
+   A synthetic full pass-through case exercises this failure path.
+5. **Contact bounds** - the settled subject is checked against the tree trunk and both cars;
+   Hanlon/Mireles' car is checked against the wall using body bounds and a 0.2 m tolerance.
 
 The harness was validated by mutation testing: deliberately breaking `start()` makes the
 restart check fail, and deliberately dropping a keyframe makes the path validator report a

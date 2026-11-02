@@ -24,11 +24,11 @@ const YARD_WEST_EDGE_X: float = -ROAD_WIDTH * 0.5
 ## that the subject vehicle came to rest "wedged between a parked civilian
 ## vehicle, an FBI vehicle and a tree" in a front yard on the west side of
 ## 82nd Avenue, facing northbound.
-## The west-to-east order across the wreck is:
-##   tree -> Manauzzi's FBI car -> subject vehicle -> parked civilian car
-## The parked civilian car is on the subject vehicle's passenger side, which is
-## the side the Miami Herald reports was jammed shut against it.
-const TREE_POSITION: Vector3 = Vector3(-11.8, 0.0, -19.6)
+## The tree is just ahead of the subject vehicle's north-facing front bumper.
+## Manauzzi's car contacts its driver side, and the parked car contacts its
+## passenger side, which the Miami Herald reports was jammed shut against it.
+const TREE_POSITION: Vector3 = Vector3(-10.9, 0.0, -21.15)
+const TREE_TRUNK_RADIUS: float = 0.30
 
 ## Lane centres. The road is two lanes wide either side of the centre line.
 ## Each vehicle is given its own lane so the cars never occupy the same
@@ -48,14 +48,14 @@ const GROGAN_APPROACH: Vector3 = Vector3(-0.4, 0.0, -60.0)
 ## FBI car on one side and the parked civilian car on the other, with the
 ## tree behind it, matching the FBI incident report's description of the car
 ## being "wedged between a parked civilian vehicle, an FBI vehicle and a tree".
-const MANAUZZI_FINAL: Vector3 = Vector3(-11.1, 0.0, -18.4)
-const SUBJECT_FINAL: Vector3 = Vector3(-8.7, 0.0, -18.4)
-const PARKED_CAR_FINAL: Vector3 = Vector3(-5.2, 0.0, -18.4)
+const MANAUZZI_FINAL: Vector3 = Vector3(-12.8, 0.0, -18.4)
+const SUBJECT_FINAL: Vector3 = Vector3(-10.9, 0.0, -18.4)
+const PARKED_CAR_FINAL: Vector3 = Vector3(-9.0, 0.0, -18.4)
 const HANLON_FINAL: Vector3 = Vector3(-10.9, 0.0, -9.0)
 const GROGAN_FINAL: Vector3 = Vector3(-4.4, 0.0, -11.2)
 const WALL_POSITION: Vector3 = Vector3(-13.9, 1.1, -7.0)
 const WALL_SIZE: Vector3 = Vector3(0.45, 2.2, 14.0)
-const DRIVEWAY_POSITION: Vector3 = Vector3(-7.5, 0.03, -18.5)
+const DRIVEWAY_POSITION: Vector3 = Vector3(-9.9, 0.03, -18.5)
 const DRIVEWAY_SIZE: Vector3 = Vector3(4.2, 0.06, 13.0)
 
 const ASPHALT_COLOR: Color = Color(0.18, 0.18, 0.19)
@@ -102,7 +102,7 @@ static func _build_road(parent: Node3D) -> void:
 	lane_mesh.size = Vector3(0.14, 0.02, ROAD_LENGTH)
 	lane_center.mesh = lane_mesh
 	lane_center.position = Vector3(ROAD_CENTER_X, 0.075, 0.0)
-	var lane_material: StandardMaterial3D = _make_material(Color(0.72, 0.70, 0.55), 0.8)
+	lane_center.material_override = _make_material(Color(0.72, 0.70, 0.55), 0.8)
 	parent.add_child(lane_center)
 
 
@@ -149,8 +149,8 @@ static func _build_tree(parent: Node3D) -> void:
 	var trunk: MeshInstance3D = MeshInstance3D.new()
 	trunk.name = "Trunk"
 	var trunk_mesh: CylinderMesh = CylinderMesh.new()
-	trunk_mesh.top_radius = 0.22
-	trunk_mesh.bottom_radius = 0.30
+	trunk_mesh.top_radius = TREE_TRUNK_RADIUS * 0.73
+	trunk_mesh.bottom_radius = TREE_TRUNK_RADIUS
 	trunk_mesh.height = 3.2
 	trunk_mesh.radial_segments = 10
 	trunk.mesh = trunk_mesh

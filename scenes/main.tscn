@@ -1,7 +1,7 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://dqxxrwi1j5abi"]
 
-[ext_resource type="Script" path="res://scripts/crash/crash_scene.gd" id="1_crash_scene"]
-[ext_resource type="Script" path="res://scripts/crash/crash_sequence.gd" id="2_crash_sequence"]
+[ext_resource type="Script" uid="uid://b7medklpkt70s" path="res://scripts/crash/crash_scene.gd" id="1_crash_scene"]
+[ext_resource type="Script" uid="uid://dh2ienmx7lo1e" path="res://scripts/crash/crash_sequence.gd" id="2_crash_sequence"]
 
 [sub_resource type="Environment" id="Environment_overcast"]
 background_mode = 1
@@ -14,31 +14,29 @@ fog_enabled = true
 fog_light_color = Color(0.68, 0.72, 0.76, 1)
 fog_density = 0.0015
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_road"]
-
-[node name="Main" type="Node3D"]
+[node name="Main" type="Node3D" unique_id=1505264532]
 script = ExtResource("1_crash_scene")
 
-[node name="CrashSequence" type="Node3D" parent="."]
+[node name="CrashSequence" type="Node3D" parent="." unique_id=427509397]
 script = ExtResource("2_crash_sequence")
 
-[node name="Camera3D" type="Camera3D" parent="."]
+[node name="Camera3D" type="Camera3D" parent="." unique_id=1331603673]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 21, 13.5, -25)
 current = true
 fov = 55.0
 
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.866025, 0.321394, -0.383022, 0, 0.766044, 0.642788, 0.5, -0.556670, 0.663414, 0, 25, 0)
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1818421153]
+transform = Transform3D(0.866025, 0.321394, -0.383022, 0, 0.766044, 0.642788, 0.5, -0.55667, 0.663414, 0, 25, 0)
 light_color = Color(1, 0.96, 0.89, 1)
 light_energy = 1.15
 shadow_enabled = true
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1837563613]
 environment = SubResource("Environment_overcast")
 
-[node name="CanvasLayer" type="CanvasLayer" parent="."]
+[node name="CanvasLayer" type="CanvasLayer" parent="." unique_id=1137408569]
 
-[node name="StatusLabel" type="Label" parent="CanvasLayer"]
+[node name="StatusLabel" type="Label" parent="CanvasLayer" unique_id=875709833]
 offset_left = 24.0
 offset_top = 18.0
 offset_right = 1180.0
@@ -49,7 +47,7 @@ theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 22
 text = "Approach"
 
-[node name="SourceLabel" type="Label" parent="CanvasLayer"]
+[node name="SourceLabel" type="Label" parent="CanvasLayer" unique_id=1747916524]
 offset_left = 24.0
 offset_top = 56.0
 offset_right = 1180.0
@@ -59,12 +57,14 @@ theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.08, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 14
 
-[node name="HelpLabel" type="Label" parent="CanvasLayer"]
+[node name="HelpLabel" type="Label" parent="CanvasLayer" unique_id=2110162871]
+anchor_top = 1.0
+anchor_bottom = 1.0
 offset_left = 24.0
-offset_bottom = -58.0
+offset_top = -58.0
 offset_right = 1400.0
-offset_top = -22.0
-theme_override_colors/font_color = Color(0.82, 0.82, 0.80, 1)
+offset_bottom = -22.0
+theme_override_colors/font_color = Color(0.82, 0.82, 0.8, 1)
 theme_override_colors/font_outline_color = Color(0.05, 0.06, 0.08, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 13

@@ -19,9 +19,12 @@ func _ready() -> void:
 	DirAccess.make_dir_recursive_absolute(OUTPUT_DIR)
 
 	var scene: Node3D = load(MAIN_SCENE).instantiate()
+	var sequence: CrashSequence = scene.get_node("CrashSequence")
+	sequence.auto_start = false
+	sequence.set_process(false)
+	scene.set_process(false)
 	add_child(scene)
 
-	var sequence: CrashSequence = scene.get_node("CrashSequence")
 	var camera: Camera3D = scene.get_node("Camera3D")
 	camera.current = true
 

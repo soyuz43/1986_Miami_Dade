@@ -217,7 +217,7 @@ func _build_vehicles() -> void:
 	manauzzi_car = _create_vehicle("ManauzziCar", MANAUZZI_COLOR, Color(0.30, 0.31, 0.33))
 	parked_car = _create_vehicle("ParkedCivilianCar", PARKED_CAR_COLOR, Color(0.04, 0.04, 0.05))
 	parked_car.position = CrashBlockout.PARKED_CAR_FINAL
-	parked_car.rotation.y = deg_to_rad(90.0)
+	parked_car.rotation.y = 0.0
 	CrashVehicleFactory.add_label(parked_car, "Parked civilian car", 1.9)
 
 	CrashVehicleFactory.add_label(subject_vehicle, "Subject vehicle - Monte Carlo", 1.9)
@@ -252,8 +252,9 @@ func _build_paths() -> void:
 		Vector3(-6.8, 0.0, -1.0),
 		Vector3(-7.8, 0.0, -4.0),
 		Vector3(-8.2, 0.0, -6.0),
-		Vector3(-8.5, 0.0, -11.0),
-		Vector3(-8.6, 0.0, -15.0),
+		Vector3(-10.6, 0.0, -11.0),
+		Vector3(-11.5, 0.0, -15.0),
+		Vector3(-11.5, 0.0, -17.4),
 		CrashBlockout.SUBJECT_FINAL,
 	])
 	_subject_rotations = PackedFloat32Array([
@@ -266,43 +267,50 @@ func _build_paths() -> void:
 		deg_to_rad(330.0),
 		deg_to_rad(350.0),
 		deg_to_rad(358.0),
+		deg_to_rad(359.0),
 		deg_to_rad(360.0),
 	])
 	_subject_keys = PackedFloat32Array([
-		0.0, 3.2, 4.6, 6.0, 7.2, 8.4, 9.6, 10.6, 11.4, 12.2,
+		0.0, 3.2, 4.6, 6.0, 7.2, 8.4, 9.6, 10.6, 11.4, 12.0, 12.2,
 	])
 
-	# --- Manauzzi car: closes from behind in the next lane west, moves toward
-	#     the subject car's driver side for the first ram, then drives with it
-	#     through the U-turn and finishes alongside it, in contact.
+	# --- Manauzzi car: closes from behind, makes the first ram before the
+	#     subject begins its U-turn, continues through the later impact, and
+	#     finishes alongside it in contact.
 	_manauzzi_path = PackedVector3Array([
 		CrashBlockout.MANAUZZI_APPROACH,
 		Vector3(-7.6, 0.0, -34.0),
-		Vector3(-7.6, 0.0, -20.0),
-		Vector3(-7.2, 0.0, -12.0),
+		Vector3(-5.8, 0.0, -20.0),
+		Vector3(-5.8, 0.0, -16.0),
+		Vector3(-4.057, 0.0, -6.866),
+		Vector3(-4.13, 0.0, -5.73),
 		Vector3(-6.8, 0.0, -7.0),
 		Vector3(-8.2, 0.0, -3.0),
 		Vector3(-9.4, 0.0, -3.0),
-		Vector3(-10.0, 0.0, -3.0),
-		Vector3(-10.6, 0.0, -7.0),
-		Vector3(-11.0, 0.0, -14.0),
+		Vector3(-13.0, 0.0, -3.0),
+		Vector3(-13.0, 0.0, -14.0),
+		Vector3(-13.4, 0.0, -17.4),
+		Vector3(-13.4, 0.0, -17.4),
 		CrashBlockout.MANAUZZI_FINAL,
 	])
 	_manauzzi_rotations = PackedFloat32Array([
 		deg_to_rad(180.0),
 		deg_to_rad(180.0),
 		deg_to_rad(180.0),
+		deg_to_rad(180.0),
+		deg_to_rad(167.0),
+		deg_to_rad(165.0),
 		deg_to_rad(178.0),
-		deg_to_rad(172.0),
 		deg_to_rad(230.0),
 		deg_to_rad(290.0),
 		deg_to_rad(320.0),
 		deg_to_rad(342.0),
 		deg_to_rad(355.0),
 		deg_to_rad(360.0),
+		deg_to_rad(360.0),
 	])
 	_manauzzi_keys = PackedFloat32Array([
-		0.0, 3.0, 4.4, 5.2, 6.4, 7.4, 8.6, 9.6, 10.6, 11.4, 12.2,
+		0.0, 3.0, 4.4, 4.8, 5.6, 6.0, 6.4, 7.4, 8.6, 9.6, 10.6, 11.4, 12.0, 12.2,
 	])
 
 	# --- Hanlon/Mireles car: starts in the lane east of the subject car, pulls
@@ -382,7 +390,10 @@ func _update_phase_for_time(time: float) -> void:
 		_set_phase(PHASE_U_TURN)
 	elif time < 8.8:
 		_set_phase(PHASE_SECOND_RAM)
-	elif time < 10.6:
+	elif time < maxf(
+		maxf(_subject_keys[-1], _manauzzi_keys[-1]),
+		maxf(_hanlon_keys[-1], _grogan_keys[-1])
+	):
 		_set_phase(PHASE_IMPACT)
 	else:
 		_set_phase(PHASE_SETTLED)
