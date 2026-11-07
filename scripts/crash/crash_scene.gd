@@ -1,8 +1,9 @@
+class_name CrashScene
 extends Node3D
 
 ## Main controller for the crash opening (Milestone 1).
 ##
-## Launches straight into the crash sequence with no menu. Runs the scripted
+## Launches straight into the crash opening with no menu. Runs the scripted
 ## blockout, then hands the viewer an inspectable camera over the settled
 ## vehicles. Restart replays the identical sequence from the beginning.
 
@@ -87,7 +88,7 @@ func _configure_camera() -> void:
 	camera.look_at(Vector3(2.0, 0.6, -18.0), Vector3.UP)
 
 
-func _on_phase_changed(phase_name: String, _phase_index: int) -> void:
+func _on_phase_changed(_phase_name: String, _phase_index: int) -> void:
 	_update_labels()
 
 
@@ -104,7 +105,11 @@ func _update_labels() -> void:
 	if crash_sequence.is_finished():
 		status_label.text = "Crash settled  |  Press R to replay  |  Press C for camera toggle"
 	else:
+		var beat: CrashChoreography.Beat = crash_sequence.get_current_beat()
 		status_label.text = "%s  |  Press R to replay  |  Press C for camera toggle" % crash_sequence.get_phase_name()
+		if beat != null and not beat.source.is_empty():
+			source_label.text = "%s: %s" % [beat.source, beat.description]
+		return
 
 	source_label.text = "Blockout reconstruction - not a photographic reconstruction. %s" % SOURCE_NOTE
 	help_label.text = "Phase timing is relative. The FBI incident report places the car stop near 9:32 a.m.; the Miami Herald reconstruction places it near 9:19 a.m."

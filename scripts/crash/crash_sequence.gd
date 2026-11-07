@@ -1,35 +1,13 @@
 class_name CrashSequence
 extends Node3D
 
-## Drives the deterministic crash opening: approach, felony car stop, first ram,
-## U-turn, second ram, impact and settle.
-##
-## The sequence is a scripted presentation, not a simulation. It is keyframed
-## against an explicit timeline of seconds so that every run is identical.
-## Event timings below follow the relative phase order documented in
-## docs/RESEARCH_crash.md. Absolute wall-clock times are deliberately NOT used:
-## the FBI incident report puts the car stop at approximately 9:32 a.m. while
-## the Miami Herald reconstruction puts it at approximately 9:19 a.m., and that
-## discrepancy is unresolved.
-##
-## Vehicle roles (see docs/RESEARCH_crash.md for sourcing):
-##   SubjectVehicle  - 1982 Chevrolet Monte Carlo, Platt (driver) and Matix (passenger)
-##   GroganDoveCar   - Buick Century, SA Grogan (driver) and SA Dove (passenger)
-##   HanlonMirelesCar- Chrysler, SA Hanlon (driver) and SA Mireles (passenger)
-##   ManauzziCar     - Buick, SA Manauzzi (driver)
+## Drives the deterministic crash opening: approach, felony car stop, first
+## ram, U-turn, second ram, impact and settle.
 
 signal phase_changed(phase_name: String, phase_index: int)
 signal sequence_finished
 
-const PHASE_NAMES: Array[String] = [
-	"Approach",
-	"Car stop ordered",
-	"First ram",
-	"U-turn",
-	"Second ram",
-	"Impact",
-	"Settled",
-]
+const SEQUENCE_DURATION: float = 13.0
 
 const PHASE_APPROACH: int = 0
 const PHASE_CAR_STOP: int = 1
@@ -38,14 +16,6 @@ const PHASE_U_TURN: int = 3
 const PHASE_SECOND_RAM: int = 4
 const PHASE_IMPACT: int = 5
 const PHASE_SETTLED: int = 6
-
-const SEQUENCE_DURATION: float = 13.0
-
-const SUBJECT_COLOR: Color = Color(0.07, 0.07, 0.08)
-const GROGAN_DOVE_COLOR: Color = Color(0.72, 0.66, 0.20)
-const HANLON_MIRELES_COLOR: Color = Color(0.60, 0.48, 0.16)
-const MANAUZZI_COLOR: Color = Color(0.36, 0.37, 0.39)
-const PARKED_CAR_COLOR: Color = Color(0.05, 0.05, 0.06)
 
 @export var playback_speed: float = 1.0
 @export var auto_start: bool = true
@@ -60,21 +30,21 @@ var subject_vehicle: Node3D
 var grogan_dove_car: Node3D
 var hanlon_mireles_car: Node3D
 var manauzzi_car: Node3D
-var parked_car: Node3D
+var mcneill_car: Node3D
+var risner_orrantia_car: Node3D
+var parked_cutlass: Node3D
+var parked_transam: Node3D
+var parked_row: Array[Node3D] = []
 
-var _subject_path: PackedVector3Array = PackedVector3Array()
-var _subject_rotations: PackedFloat32Array = PackedFloat32Array()
-var _manauzzi_path: PackedVector3Array = PackedVector3Array()
-var _manauzzi_rotations: PackedFloat32Array = PackedFloat32Array()
-var _hanlon_path: PackedVector3Array = PackedVector3Array()
-var _hanlon_rotations: PackedFloat32Array = PackedFloat32Array()
-var _grogan_path: PackedVector3Array = PackedVector3Array()
-var _grogan_rotations: PackedFloat32Array = PackedFloat32Array()
+var subject_driver: CrashVehicleDriver
+var grogan_driver: CrashVehicleDriver
+var hanlon_driver: CrashVehicleDriver
+var manauzzi_driver: CrashVehicleDriver
+var mcneill_driver: CrashVehicleDriver
+var risner_driver: CrashVehicleDriver
 
-var _subject_keys: PackedFloat32Array = PackedFloat32Array()
-var _manauzzi_keys: PackedFloat32Array = PackedFloat32Array()
-var _hanlon_keys: PackedFloat32Array = PackedFloat32Array()
-var _grogan_keys: PackedFloat32Array = PackedFloat32Array()
+var _beats: Array[CrashChoreography.Beat] = []
+var _specs: Dictionary = {}
 
 
 func _ready() -> void:
@@ -83,42 +53,16 @@ func _ready() -> void:
 		start()
 
 
-## Builds the vehicles and paths. Separate from _ready so headless verification
-## can drive the sequence without depending on scene-tree readiness.
 func setup() -> void:
 	if _is_setup:
 		return
 	_is_setup = true
+	_specs = CrashLayout.build_vehicle_specs()
+	_beats = CrashChoreography.build_beats()
 	_build_vehicles()
-	_build_paths()
-	_validate_paths()
+	_build_drivers()
+	_validate_drivers()
 	_apply_at_time(0.0)
-
-
-## Every path must have exactly one rotation and one key per point, and the
-## keys must be strictly increasing. A mismatch here silently drops the last
-## keyframe, which would leave a vehicle short of its documented resting place.
-func _validate_paths() -> void:
-	_validate_path("subject", _subject_path, _subject_rotations, _subject_keys)
-	_validate_path("manauzzi", _manauzzi_path, _manauzzi_rotations, _manauzzi_keys)
-	_validate_path("hanlon", _hanlon_path, _hanlon_rotations, _hanlon_keys)
-	_validate_path("grogan", _grogan_path, _grogan_rotations, _grogan_keys)
-
-
-func _validate_path(
-	label: String,
-	path: PackedVector3Array,
-	rotations: PackedFloat32Array,
-	keys: PackedFloat32Array
-) -> void:
-	if path.size() != rotations.size() or path.size() != keys.size():
-		push_error("Crash path '%s' has mismatched lengths: %d points, %d rotations, %d keys." % [
-			label, path.size(), rotations.size(), keys.size()
-		])
-		return
-	for index: int in range(keys.size() - 1):
-		if keys[index + 1] <= keys[index]:
-			push_error("Crash path '%s' has non-increasing keys at index %d." % [label, index])
 
 
 func start() -> void:
@@ -126,6 +70,7 @@ func start() -> void:
 	_finished = false
 	_current_phase = -1
 	_running = true
+	_reset_drivers()
 	_apply_at_time(0.0)
 
 
@@ -139,261 +84,145 @@ func _process(delta: float) -> void:
 	if _time >= SEQUENCE_DURATION and not _finished:
 		_finished = true
 		_running = false
-		_set_phase(PHASE_SETTLED)
+		_set_phase(CrashChoreography.PHASE_SETTLED)
 		sequence_finished.emit()
 
 
-func is_running() -> bool:
-	return _running
+func is_running() -> bool: return _running
+func is_finished() -> bool: return _finished
+func get_sequence_time() -> float: return _time
+func get_phase_name() -> String: return CrashChoreography.get_phase_name(_current_phase)
+func get_phase_index() -> int: return _current_phase
+func get_current_beat() -> CrashChoreography.Beat: return CrashChoreography.find_beat(_beats, _time)
+func get_beats() -> Array[CrashChoreography.Beat]: return _beats
+func get_spec(vehicle_id: String) -> CrashVehicleSpec: return _specs.get(vehicle_id, null)
+func get_specs() -> Dictionary: return _specs
 
+func find_seat_for(occupant_id: String) -> SeatAnchor:
+	for spec: CrashVehicleSpec in _specs.values():
+		var seat: SeatAnchor = spec.find_seat_for_occupant(occupant_id)
+		if seat != null:
+			return seat
+	return null
 
-func is_finished() -> bool:
-	return _finished
-
-
-func get_sequence_time() -> float:
-	return _time
-
-
-func get_phase_name() -> String:
-	if _current_phase < 0 or _current_phase >= PHASE_NAMES.size():
-		return "Idle"
-	return PHASE_NAMES[_current_phase]
-
+func get_seat_world_transform(occupant_id: String, time: float) -> Transform3D:
+	var seat: SeatAnchor = find_seat_for(occupant_id)
+	if seat == null: return Transform3D.IDENTITY
+	var vehicle: Node3D = _vehicle_for_id(seat.vehicle_id)
+	if vehicle == null: return Transform3D.IDENTITY
+	return seat.get_world_transform(vehicle.transform)
 
 func _set_phase(phase_index: int) -> void:
-	if phase_index == _current_phase:
-		return
+	if phase_index == _current_phase: return
 	_current_phase = phase_index
 	phase_changed.emit(get_phase_name(), phase_index)
 
-
-## Sample every vehicle transform at the given sequence time and update phase state.
 func _apply_at_time(time: float) -> void:
-	_apply_vehicle(subject_vehicle, _subject_path, _subject_rotations, _subject_keys, time)
-	_apply_vehicle(manauzzi_car, _manauzzi_path, _manauzzi_rotations, _manauzzi_keys, time)
-	_apply_vehicle(hanlon_mireles_car, _hanlon_path, _hanlon_rotations, _hanlon_keys, time)
-	_apply_vehicle(grogan_dove_car, _grogan_path, _grogan_rotations, _grogan_keys, time)
+	subject_driver.apply_at_time(time)
+	manauzzi_driver.apply_at_time(time)
+	hanlon_driver.apply_at_time(time)
+	grogan_driver.apply_at_time(time)
+	mcneill_driver.apply_at_time(time)
+	risner_driver.apply_at_time(time)
 	_update_phase_for_time(time)
 
-
-func _apply_vehicle(
-	vehicle: Node3D,
-	path: PackedVector3Array,
-	rotations: PackedFloat32Array,
-	keys: PackedFloat32Array,
-	time: float
-) -> void:
-	if vehicle == null or path.size() < 2 or keys.size() < 2:
-		return
-	var segment_index: int = _find_segment(keys, time)
-	var key_start: float = keys[segment_index]
-	var key_end: float = keys[segment_index + 1]
-	var span: float = maxf(key_end - key_start, 0.0001)
-	var local_t: float = clampf((time - key_start) / span, 0.0, 1.0)
-	local_t = _ease_in_out(local_t)
-	var position: Vector3 = path[segment_index].lerp(path[segment_index + 1], local_t)
-	var yaw: float = lerpf(rotations[segment_index], rotations[segment_index + 1], local_t)
-	vehicle.position = position
-	vehicle.rotation.y = yaw
+func _update_phase_for_time(time: float) -> void:
+	var beat: CrashChoreography.Beat = CrashChoreography.find_beat(_beats, time)
+	_set_phase(beat.phase_index)
 
 
-func _find_segment(keys: PackedFloat32Array, time: float) -> int:
-	for index: int in range(keys.size() - 1):
-		if time <= keys[index + 1]:
-			return index
-	return keys.size() - 2
-
-
-func _ease_in_out(value: float) -> float:
-	return value * value * (3.0 - 2.0 * value)
-
-
-## Build the placeholder vehicles and place them in their starting positions.
 func _build_vehicles() -> void:
-	subject_vehicle = _create_vehicle("SubjectVehicle", SUBJECT_COLOR, Color(0.05, 0.05, 0.06))
-	grogan_dove_car = _create_vehicle("GroganDoveCar", GROGAN_DOVE_COLOR, Color(0.30, 0.26, 0.12))
-	hanlon_mireles_car = _create_vehicle("HanlonMirelesCar", HANLON_MIRELES_COLOR, Color(0.32, 0.26, 0.10))
-	manauzzi_car = _create_vehicle("ManauzziCar", MANAUZZI_COLOR, Color(0.30, 0.31, 0.33))
-	parked_car = _create_vehicle("ParkedCivilianCar", PARKED_CAR_COLOR, Color(0.04, 0.04, 0.05))
-	parked_car.position = CrashBlockout.PARKED_CAR_FINAL
-	parked_car.rotation.y = 0.0
-	CrashVehicleFactory.add_label(parked_car, "Parked civilian car", 1.9)
+	subject_vehicle = _create_vehicle(CrashRoster.VEHICLE_SUBJECT)
+	grogan_dove_car = _create_vehicle(CrashRoster.VEHICLE_GROGAN_DOVE)
+	hanlon_mireles_car = _create_vehicle(CrashRoster.VEHICLE_HANLON_MIRELES)
+	manauzzi_car = _create_vehicle(CrashRoster.VEHICLE_MANAUZZI)
+	mcneill_car = _create_vehicle(CrashRoster.VEHICLE_MCNEILL)
+	risner_orrantia_car = _create_vehicle(CrashRoster.VEHICLE_RISNER_ORRANTIA)
 
-	CrashVehicleFactory.add_label(subject_vehicle, "Subject vehicle - Monte Carlo", 1.9)
-	CrashVehicleFactory.add_label(manauzzi_car, "FBI car - Manauzzi", 1.9)
-	CrashVehicleFactory.add_label(hanlon_mireles_car, "FBI car - Hanlon / Mireles", 1.9)
-	CrashVehicleFactory.add_label(grogan_dove_car, "FBI car - Grogan / Dove", 1.9)
+	parked_cutlass = _create_vehicle(CrashRoster.VEHICLE_PARKED_CUTLASS)
+	parked_cutlass.position = CrashGeometry.PARKED_CUTLASS_FINAL
+	parked_cutlass.rotation.y = 0.0
+
+	# The parked civilian row, running away from the subject vehicle towards the house.
+	parked_row.clear()
+	for index: int in range(CrashGeometry.PARKED_ROW.size()):
+		var position: Vector3 = CrashGeometry.PARKED_ROW[index]
+		var car: Node3D = _create_vehicle(CrashRoster.VEHICLE_PARKED_TRANSAM)
+		if index == 0:
+			car.name = CrashRoster.VEHICLE_PARKED_TRANSAM
+			parked_transam = car
+		else:
+			car.name = "%s_%d" % [CrashRoster.VEHICLE_PARKED_TRANSAM, index]
+		car.position = position
+		car.rotation.y = 0.0
+		parked_row.append(car)
 
 
-func _create_vehicle(node_name: String, body_color: Color, roof_color: Color) -> Node3D:
-	var vehicle: Node3D = CrashVehicleFactory.create_vehicle(4.9, 1.9, body_color, roof_color)
-	vehicle.name = node_name
+func _create_vehicle(vehicle_id: String) -> Node3D:
+	var spec: CrashVehicleSpec = _specs[vehicle_id]
+	var vehicle: Node3D = CrashVehicleFactory.create_vehicle(
+		spec.length, spec.width, spec.body_color, spec.roof_color
+	)
+	vehicle.name = spec.vehicle_id
 	add_child(vehicle)
 	return vehicle
 
 
-## Define the keyframed paths.
-##
-## Positions are in metres on the blockout's coordinate system. The road runs
-## along Z (north/south). During the approach the subject vehicle travels
-## southbound (+Z); the U-turn reverses it to face northbound (-Z), matching
-## the FBI incident report's statement that the suspect's vehicle came to rest
-## "facing northbound".
-func _build_paths() -> void:
-	# --- Subject vehicle: southbound in its own lane, swerves right off the
-	#     pavement during the stop, U-turns, then runs northbound into the front
-	#     yard. It ends facing northbound, as the FBI incident report states.
-	_subject_path = PackedVector3Array([
-		CrashBlockout.SUBJECT_APPROACH,
-		Vector3(-4.0, 0.0, -14.0),
-		Vector3(-4.2, 0.0, -6.0),
-		Vector3(-5.4, 0.0, -1.0),
-		Vector3(-6.8, 0.0, -1.0),
-		Vector3(-7.8, 0.0, -4.0),
-		Vector3(-8.2, 0.0, -6.0),
-		Vector3(-10.6, 0.0, -11.0),
-		Vector3(-11.5, 0.0, -15.0),
-		Vector3(-11.5, 0.0, -17.4),
-		CrashBlockout.SUBJECT_FINAL,
-	])
-	_subject_rotations = PackedFloat32Array([
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(175.0),
-		deg_to_rad(165.0),
-		deg_to_rad(200.0),
-		deg_to_rad(280.0),
-		deg_to_rad(330.0),
-		deg_to_rad(350.0),
-		deg_to_rad(358.0),
-		deg_to_rad(359.0),
-		deg_to_rad(360.0),
-	])
-	_subject_keys = PackedFloat32Array([
-		0.0, 3.2, 4.6, 6.0, 7.2, 8.4, 9.6, 10.6, 11.4, 12.0, 12.2,
-	])
+func _build_drivers() -> void:
+	subject_driver = _make_driver(subject_vehicle, CrashRoster.VEHICLE_SUBJECT,
+		CrashGeometry.subject_path(), CrashGeometry.subject_speed_profile())
+	manauzzi_driver = _make_driver(manauzzi_car, CrashRoster.VEHICLE_MANAUZZI,
+		CrashGeometry.manauzzi_path(), CrashGeometry.manauzzi_speed_profile())
+	hanlon_driver = _make_driver(hanlon_mireles_car, CrashRoster.VEHICLE_HANLON_MIRELES,
+		CrashGeometry.hanlon_path(), CrashGeometry.hanlon_speed_profile())
+	grogan_driver = _make_driver(grogan_dove_car, CrashRoster.VEHICLE_GROGAN_DOVE,
+		CrashGeometry.grogan_path(), CrashGeometry.grogan_speed_profile())
+	mcneill_driver = _make_driver(mcneill_car, CrashRoster.VEHICLE_MCNEILL,
+		CrashGeometry.mcneill_path(), CrashGeometry.mcneill_speed_profile())
+	risner_driver = _make_driver(risner_orrantia_car, CrashRoster.VEHICLE_RISNER_ORRANTIA,
+		CrashGeometry.risner_path(), CrashGeometry.risner_speed_profile())
 
-	# --- Manauzzi car: closes from behind, makes the first ram before the
-	#     subject begins its U-turn, continues through the later impact, and
-	#     finishes alongside it in contact.
-	_manauzzi_path = PackedVector3Array([
-		CrashBlockout.MANAUZZI_APPROACH,
-		Vector3(-7.6, 0.0, -34.0),
-		Vector3(-5.8, 0.0, -20.0),
-		Vector3(-5.8, 0.0, -16.0),
-		Vector3(-4.057, 0.0, -6.866),
-		Vector3(-4.13, 0.0, -5.73),
-		Vector3(-6.8, 0.0, -7.0),
-		Vector3(-8.2, 0.0, -3.0),
-		Vector3(-9.4, 0.0, -3.0),
-		Vector3(-13.0, 0.0, -3.0),
-		Vector3(-13.0, 0.0, -14.0),
-		Vector3(-13.4, 0.0, -17.4),
-		Vector3(-13.4, 0.0, -17.4),
-		CrashBlockout.MANAUZZI_FINAL,
-	])
-	_manauzzi_rotations = PackedFloat32Array([
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(167.0),
-		deg_to_rad(165.0),
-		deg_to_rad(178.0),
-		deg_to_rad(230.0),
-		deg_to_rad(290.0),
-		deg_to_rad(320.0),
-		deg_to_rad(342.0),
-		deg_to_rad(355.0),
-		deg_to_rad(360.0),
-		deg_to_rad(360.0),
-	])
-	_manauzzi_keys = PackedFloat32Array([
-		0.0, 3.0, 4.4, 4.8, 5.6, 6.0, 6.4, 7.4, 8.6, 9.6, 10.6, 11.4, 12.0, 12.2,
-	])
 
-	# --- Hanlon/Mireles car: starts in the lane east of the subject car, pulls
-	#     up on its passenger side during the stop, is struck by the swerving
-	#     subject vehicle, spins out, and comes to rest against the substation
-	#     wall south of the scene.
-	_hanlon_path = PackedVector3Array([
-		CrashBlockout.HANLON_APPROACH,
-		Vector3(3.6, 0.0, -30.0),
-		Vector3(3.2, 0.0, -16.0),
-		Vector3(1.6, 0.0, -8.0),
-		Vector3(0.2, 0.0, -3.0),
-		Vector3(-0.4, 0.0, 0.4),
-		Vector3(-1.6, 0.0, -1.0),
-		Vector3(-5.0, 0.0, -2.0),
-		Vector3(-9.4, 0.0, -3.2),
-		Vector3(-11.9, 0.0, -5.6),
-		CrashBlockout.HANLON_FINAL,
-	])
-	_hanlon_rotations = PackedFloat32Array([
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(185.0),
-		deg_to_rad(205.0),
-		deg_to_rad(250.0),
-		deg_to_rad(275.0),
-		deg_to_rad(285.0),
-		deg_to_rad(290.0),
-		deg_to_rad(290.0),
-	])
-	_hanlon_keys = PackedFloat32Array([
-		0.0, 3.0, 4.2, 4.9, 5.8, 6.8, 8.0, 9.0, 10.2, 10.8, 11.4,
-	])
+func _make_driver(vehicle: Node3D, vehicle_id: String, path: CrashPath, speed: CrashSpeedProfile) -> CrashVehicleDriver:
+	return CrashVehicleDriver.new(vehicle, path, speed, _specs[vehicle_id])
 
-	# --- Grogan/Dove car: initiates the felony car stop from directly behind in
-	#     the lane east of the subject car, then makes a U-turn further south
-	#     and parks behind the subject vehicle.
-	_grogan_path = PackedVector3Array([
-		CrashBlockout.GROGAN_APPROACH,
-		Vector3(-0.4, 0.0, -46.0),
-		Vector3(-0.4, 0.0, -30.0),
-		Vector3(-0.6, 0.0, -20.0),
-		Vector3(-1.4, 0.0, -12.0),
-		Vector3(-2.8, 0.0, -6.0),
-		Vector3(-3.8, 0.0, -6.6),
-		Vector3(-4.2, 0.0, -8.4),
-		Vector3(-4.4, 0.0, -10.0),
-		CrashBlockout.GROGAN_FINAL,
-	])
-	_grogan_rotations = PackedFloat32Array([
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(180.0),
-		deg_to_rad(178.0),
-		deg_to_rad(172.0),
-		deg_to_rad(240.0),
-		deg_to_rad(320.0),
-		deg_to_rad(350.0),
-		deg_to_rad(358.0),
-	])
-	_grogan_keys = PackedFloat32Array([
-		0.0, 2.8, 4.0, 4.6, 5.6, 6.6, 7.8, 9.0, 10.2, 11.2,
-	])
 
-## Map sequence time to a narrative phase.
-func _update_phase_for_time(time: float) -> void:
-	if time < 2.6:
-		_set_phase(PHASE_APPROACH)
-	elif time < 4.0:
-		_set_phase(PHASE_CAR_STOP)
-	elif time < 6.0:
-		_set_phase(PHASE_FIRST_RAM)
-	elif time < 7.6:
-		_set_phase(PHASE_U_TURN)
-	elif time < 8.8:
-		_set_phase(PHASE_SECOND_RAM)
-	elif time < maxf(
-		maxf(_subject_keys[-1], _manauzzi_keys[-1]),
-		maxf(_hanlon_keys[-1], _grogan_keys[-1])
-	):
-		_set_phase(PHASE_IMPACT)
-	else:
-		_set_phase(PHASE_SETTLED)
+func _validate_drivers() -> void:
+	_validate_driver("subject", subject_driver)
+	_validate_driver("manauzzi", manauzzi_driver)
+	_validate_driver("hanlon", hanlon_driver)
+	_validate_driver("grogan", grogan_driver)
+	_validate_driver("mcneill", mcneill_driver)
+	_validate_driver("risner", risner_driver)
+
+
+func _validate_driver(label: String, driver: CrashVehicleDriver) -> void:
+	if driver == null or not driver.is_valid():
+		push_error("CrashSequence: the '%s' driver is not valid." % label)
+		return
+	var needed: float = driver.speed_profile.distance_at(driver.speed_profile.get_end_time())
+	var available: float = driver.path.get_length()
+	if available < needed - 0.01:
+		push_error("CrashSequence: the '%s' path is %.2f m but its speed profile travels %.2f m; the vehicle would stop short." % [label, available, needed])
+
+
+func _reset_drivers() -> void:
+	subject_driver.reset()
+	manauzzi_driver.reset()
+	hanlon_driver.reset()
+	grogan_driver.reset()
+	mcneill_driver.reset()
+	risner_driver.reset()
+
+
+func _vehicle_for_id(vehicle_id: String) -> Node3D:
+	match vehicle_id:
+		CrashRoster.VEHICLE_SUBJECT: return subject_vehicle
+		CrashRoster.VEHICLE_GROGAN_DOVE: return grogan_dove_car
+		CrashRoster.VEHICLE_HANLON_MIRELES: return hanlon_mireles_car
+		CrashRoster.VEHICLE_MANAUZZI: return manauzzi_car
+		CrashRoster.VEHICLE_MCNEILL: return mcneill_car
+		CrashRoster.VEHICLE_RISNER_ORRANTIA: return risner_orrantia_car
+		CrashRoster.VEHICLE_PARKED_CUTLASS: return parked_cutlass
+		CrashRoster.VEHICLE_PARKED_TRANSAM: return parked_transam
+	return null
